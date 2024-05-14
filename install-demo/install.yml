@@ -1,0 +1,25 @@
+---
+- hosts: localhost
+  gather_facts: no
+  vars_files: vars.yml
+  tasks:
+  - name: install pre-requisites
+    pip:
+      name:
+        - openshift
+        - pyyaml
+        - kubernetes
+        - python-gitlab==1.15.0
+  - name: Install cert-manager operator
+    community.okd.k8s:
+      state: present
+      src: "{{ path_playbooks }}/lab-prep/cert-manager-operator.yaml"
+  - name: Install Gitlab
+    ansible.builtin.include_tasks:
+      file: gitlab_install.yml
+  - name: Setup GitLab with some initial configuration
+    ansible.builtin.include_tasks:
+      file: gitlab_configuration.yml
+  - name: Install Red Hat Developer Hub
+    ansible.builtin.include_tasks:
+      file: rhdh_install.yml

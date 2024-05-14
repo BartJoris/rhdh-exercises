@@ -1,0 +1,23 @@
+---
+- name: Install developer hub operator
+  community.okd.k8s:
+    state: present
+    src: "{{ path_playbooks }}/lab-prep/rhdh-operator.yaml"
+- name: Install developer hub instance
+  community.okd.k8s:
+    state: present
+    src: "{{ path_playbooks }}/lab-prep/rhdh-instance.yaml"
+  retries: 30
+  delay: 10
+- name: Get developer hub route
+  k8s_info:
+    api_version: v1
+    kind: Route
+    namespace: "rhdh-gitlab"
+    label_selectors:
+      - "app.kubernetes.io/instance=developer-hub"
+  register: route_info
+- name: Print developer hub URL
+  debug:
+    msg: "Developer Hub URL: https://{{ route_info.resources[0].spec.host }}"
+  when: route_info.resources | length > 0
