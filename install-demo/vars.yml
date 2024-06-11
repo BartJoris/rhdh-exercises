@@ -1,0 +1,10 @@
+---
+path_playbooks: /Users/bajoris/git/rhdh-exercises
+gitlab_operator_path: https://gitlab.com/api/v4/projects/18899486/packages/generic/gitlab-operator/0.30.1/gitlab-operator-openshift-0.30.1.yaml
+gitlab_output_file: /tmp/gitlab.yaml
+gitlab_namespace: "gitlab-system"
+rhdh_namespace: "rhdh-gitlab"
+gitlab_client_id: "01655ed84f6671a9f964e9ef3583e10dd36c3e6f00fe4b26be32c2ae3fb3b826"
+gitlab_client_secret: "gloas-c1265cf10214451c082c4a42d7b171f89e661259bfa9d19703fc0d5f4b5e053a"
+gitlab_token: "KbfdXFhoX407c0v5ZP2Y"
+#GitLab initial root password is: X094fCgxmLp8mqL1SaQ3TRSnr2Hrrwd0F6AcjgjO6LmuonBqANvAA0MkB3D52ogz'

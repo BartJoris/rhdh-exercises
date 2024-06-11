@@ -1,0 +1,11 @@
+---
+path_playbooks: /Users/bajoris/git/rhdh-exercises
+gitlab_operator_path: https://gitlab.com/api/v4/projects/18899486/packages/generic/gitlab-operator/0.30.1/gitlab-operator-openshift-0.30.1.yaml
+gitlab_output_file: /tmp/gitlab.yaml
+gitlab_namespace: "gitlab-system"
+rhdh_namespace: "rhdh-gitlab"
+#TODO needs to be automated
+gitlab_client_id: ""
+gitlab_client_secret: ""
+#Default gitlab token for this demo purpose
+gitlab_token: "KbfdXFhoX407c0v5ZP2Y"

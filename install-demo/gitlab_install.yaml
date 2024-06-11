@@ -1,0 +1,48 @@
+---
+- name: Install gitlab namespace
+  community.okd.k8s:
+    name: gitlab-system
+    api_version: v1
+    kind: Namespace
+    state: present
+- name: Install gitlab operator
+  community.okd.k8s:
+    state: present
+    src: "{{ gitlab_operator_path }}"
+- name: Get basedomain
+  k8s_info:
+    api_version: operator.openshift.io/v1
+    kind: IngressController
+    name: default
+    namespace: openshift-ingress-operator
+  register: basedomain_json
+- name: Set basedomain variable
+  set_fact:
+    basedomain: "{{ basedomain_json.resources[0].status.domain }}"
+- name: Print basedomain
+  debug:
+    var: basedomain
+- name: Render the template with the basedomain
+  template:
+    src: "{{ path_playbooks }}/install-demo/templates/gitlab.j2"
+    dest: "{{ gitlab_output_file }}"
+- name: Install Gitlab
+  community.okd.k8s:
+    state: present
+    src: "{{ gitlab_output_file }}"
+- name: Pause before Gitlab object can be read
+  ansible.builtin.pause:
+      minutes: 2
+- name: Wait for GitLab resource to be running
+  k8s_info:
+    api_version: apps.gitlab.com/v1beta1
+    kind: GitLab
+    name: gitlab
+    namespace: gitlab-system
+  register: gitlab_status
+  until: gitlab_status.resources[0].status.phase == "Running"
+  retries: 30
+  delay: 10
+- name: Print GitLab status
+  debug:
+    msg: "GitLab status is: {{ gitlab_status.resources[0].status.phase }}"

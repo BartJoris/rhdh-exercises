@@ -22,5 +22,5 @@ data:
           development:
             clientId: ${AUTH_GITLAB_CLIENT_ID}
             clientSecret: ${AUTH_GITLAB_CLIENT_SECRET}
-            audience: https://gitlab.${basedomain}           
-      
+            audience: https://gitlab.${basedomain}
+            callbackUrl: https://backstage-developer-hub-rhdh-gitlab.${basedomain}/api/auth/gitlab/handler/frame

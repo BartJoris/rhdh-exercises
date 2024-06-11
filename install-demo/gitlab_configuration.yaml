@@ -1,0 +1,124 @@
+---
+- name: Check if required CLI tools are installed
+  block:
+    - name: Check for jq
+      command: "jq --version"
+      register: jq_installed
+      changed_when: false
+      failed_when: false
+    - name: Check for OpenShift CLI (oc)
+      command: "oc version"
+      register: oc_installed
+      changed_when: false
+      failed_when: false
+  rescue:
+    - fail:
+        msg: "Required CLI tools (jq and oc) are not installed."
+- name: Get GitLab Ingress
+  k8s_info:
+    api_version: networking.k8s.io/v1
+    kind: Ingress
+    namespace: "{{ gitlab_namespace }}"
+    label_selectors:
+      - app=webservice
+  register: ingress_info
+- name: Set GitLab API URL fact
+  set_fact:
+    api_url: "https://{{ ingress_info.resources[0].spec.rules[0].host }}/"
+- name: Get GitLab initial root password secret
+  k8s:
+    state: present
+    definition:
+      kind: Secret
+      apiVersion: v1
+      metadata:
+        name: gitlab-gitlab-initial-root-password
+        namespace: gitlab-system
+  register: gitlab_secret
+- name: Decode GitLab initial root password
+  set_fact:
+    api_password: "{{ gitlab_secret.result.data.password | b64decode }}"
+    api_username: root
+- name: Print GitLab initial root password
+  debug:
+    msg: "GitLab initial root password is: {{ api_password }}"
+- name: Create GitLab groups
+  community.general.gitlab_group:
+    name: "{{ item }}"
+    state: present
+    visibility: public
+    api_url: "{{ api_url }}"
+    api_username: "{{ api_username }}"
+    api_password: "{{ api_password }}"
+  loop:
+    - team-a
+    - team-b
+- name: Create GitLab users
+  community.general.gitlab_user:
+    name: "{{ item.name }}"
+    username: "{{ item.username }}"
+    password: "{{ item.password }}"
+    email: "{{ item.email }}"
+    group: "{{ item.group }}"
+    state: present
+    sshkey_file: "{{ item.sshkey_file | default(omit)}}"
+    isadmin: "{{ item.isadmin | default(omit)}}"
+    confirm: false
+    api_url: "{{ api_url }}"
+    api_username: "{{ api_username }}"
+    api_password: "{{ api_password }}"
+  loop:
+    - { name: user1, username: user1, password: "@abc1cde2", email: "user1@redhat.com", group: "team-a" }
+    - { name: user2, username: user2, password: "@abc1cde2", email: "user2@redhat.com", group: "team-b" }
+    - { name: bart, username: bart, password: "@abc1cde2", email: "user3@redhat.com", group: "team-a", isadmin: true }
+    - { name: maarten, username: maarten, password: "@abc1cde2", email: "user4@redhat.com", group: "team-a", isadmin: true }
+- name: Add a user to a GitLab Group
+  community.general.gitlab_group_members:
+    api_url: "{{ api_url }}"
+    api_username: "{{ api_username }}"
+    api_password: "{{ api_password }}"
+    gitlab_group: "{{ item.group }}"
+    gitlab_user: "{{ item.user }}"
+    access_level: "{{ item.access }}"
+    state: present
+  loop:
+    - { user: user1, group: team-a, access: "developer" }
+    - { user: user2, group: team-b, access: "developer" }
+    - { user: bart, group: team-a, access: "developer" }
+    - { user: maarten, group: team-a, access: "developer" }
+- name: Create GitLab repository
+  community.general.gitlab_project:
+    api_url: "{{ api_url }}"
+    api_username: "{{ api_username }}"
+    api_password: "{{ api_password }}"
+    name: sample-app
+    group: team-a
+    visibility: public
+    state: present
+    default_branch: main
+    initialize_with_readme: true
+
+# - name: Clone repository over HTTPS
+#   ansible.builtin.git:
+#     repo: "{{ api_url }}/team-a/sample-app.git"
+#     dest: /tmp/sample-app
+#     clone: yes
+#     force: yes
+#     version: main
+#     accept_hostkey: yes
+# - name: Copy files to repository
+#   copy:
+#     src: "{{ item }}"
+#     dest: /tmp/sample-app/
+#   loop:
+#     - catalog-info.yaml
+#     - users-groups.yaml
+# - name: Add files to GitLab repository
+#   git:
+#     repo: /tmp/sample-app
+#     dest: "{{ gitlab_url }}/team-a/sample-app.git"
+#     push: yes
+#     force: yes
+#     remote: origin
+#     version: main
+#     force: yes
