@@ -1,7 +1,7 @@
 ---
 - hosts: localhost
   gather_facts: no
-  vars_files: vars.yml
+  vars_files: vars.yaml
   tasks:
   - name: install pre-requisites
     pip:
@@ -14,12 +14,19 @@
     community.okd.k8s:
       state: present
       src: "{{ path_playbooks }}/lab-prep/cert-manager-operator.yaml"
+  - name: wait until cert-manager is created
+    ansible.builtin.pause:
+      seconds: 2
   - name: Install Gitlab
     ansible.builtin.include_tasks:
-      file: gitlab_install.yml
+      file: gitlab_install.yaml
   - name: Setup GitLab with some initial configuration
     ansible.builtin.include_tasks:
-      file: gitlab_configuration.yml
+      file: gitlab_configuration.yaml
+    tags: gitlab_conf
   - name: Install Red Hat Developer Hub
     ansible.builtin.include_tasks:
-      file: rhdh_install.yml
+      file: rhdh_install.yaml
+  - name: Configure Red Hat Developer Hub
+    ansible.builtin.include_tasks:
+      file: rhdh_configuration.yaml

@@ -14,11 +14,6 @@
   rescue:
     - fail:
         msg: "Required CLI tools (jq and oc) are not installed."
-# - name: Execute local Gitlab bash script
-#   ansible.builtin.command: "./configure-gitlab.sh"
-#   args:
-#     chdir: "{{ path_playbooks }}/lab-prep/"
-#   register: script_output
 - name: Get GitLab Ingress
   k8s_info:
     api_version: networking.k8s.io/v1
@@ -76,6 +71,7 @@
     - { name: user1, username: user1, password: "@abc1cde2", email: "user1@redhat.com", group: "team-a" }
     - { name: user2, username: user2, password: "@abc1cde2", email: "user2@redhat.com", group: "team-b" }
     - { name: bart, username: bart, password: "@abc1cde2", email: "user3@redhat.com", group: "team-a", isadmin: true }
+    - { name: maarten, username: maarten, password: "@abc1cde2", email: "user4@redhat.com", group: "team-a", isadmin: true }
 - name: Add a user to a GitLab Group
   community.general.gitlab_group_members:
     api_url: "{{ api_url }}"
@@ -89,13 +85,7 @@
     - { user: user1, group: team-a, access: "developer" }
     - { user: user2, group: team-b, access: "developer" }
     - { user: bart, group: team-a, access: "developer" }
-- name: Delete GitLab Project
-  community.general.gitlab_project:
-    api_url: "{{ api_url }}"
-    api_username: "{{ api_username }}"
-    api_password: "{{ api_password }}"
-    name: sample-app
-    state: absent
+    - { user: maarten, group: team-a, access: "developer" }
 - name: Create GitLab repository
   community.general.gitlab_project:
     api_url: "{{ api_url }}"
@@ -107,6 +97,7 @@
     state: present
     default_branch: main
     initialize_with_readme: true
+
 # - name: Clone repository over HTTPS
 #   ansible.builtin.git:
 #     repo: "{{ api_url }}/team-a/sample-app.git"

@@ -1,0 +1,111 @@
+- name: Apply mandatory backend secret
+  community.okd.k8s:
+    state: present
+    namespace: "{{ rhdh_namespace }}"
+    src: "{{ path_playbooks }}/custom-app-config-gitlab/rhdh-secrets.yaml"
+  register: apply_secret_result
+
+- name: Get base domain from ingresscontroller
+  k8s_info:
+    kind: IngressController
+    namespace: openshift-ingress-operator
+    name: default
+  register: ingress_info
+
+- name: Set fact for base domain
+  set_fact:
+    basedomain: "{{ ingress_info.resources[0].status.domain }}"
+
+- name: Encode base domain in base64
+  set_fact:
+    basedomain_base64: "{{ basedomain | b64encode }}"
+
+- name: Patch secret with base domain
+  community.okd.k8s:
+    state: patched
+    namespace: "{{ rhdh_namespace }}"
+    kind: Secret
+    name: rhdh-secrets
+    merge_type: strategic-merge
+    definition:
+      data:
+        basedomain: "{{ basedomain_base64 }}"
+  when: apply_secret_result is succeeded
+
+- name: Apply custom app config map
+  community.okd.k8s:
+    state: present
+    namespace: "{{ rhdh_namespace }}"
+    src: "{{ path_playbooks }}/custom-app-config-gitlab/rhdh-app-configmap.yaml"
+
+- name: Apply RH Developer Hub instance configuration
+  community.okd.k8s:
+    state: present
+    namespace: "{{ rhdh_namespace }}"
+    src: "{{ path_playbooks }}/custom-app-config-gitlab/rhdh-instance.yaml"
+
+- name: Create GitLab secret definition
+  copy:
+    dest: "{{ path_playbooks }}/custom-app-config-gitlab/gitlab-secrets.yaml"
+    content: |
+      kind: Secret
+      apiVersion: v1
+      metadata:
+        name: gitlab-secrets
+        namespace: {{ rhdh_namespace }}
+      stringData:
+        AUTH_GITLAB_CLIENT_ID: {{ gitlab_client_id }}
+        AUTH_GITLAB_CLIENT_SECRET: {{ gitlab_client_secret }}
+        GITLAB_TOKEN: {{ gitlab_token }}
+      type: Opaque
+
+- name: Apply GitLab secret
+  community.okd.k8s:
+    state: present
+    namespace: "{{ rhdh_namespace }}"
+    src: "{{ path_playbooks }}/custom-app-config-gitlab/gitlab-secrets.yaml"
+
+- name: Apply GitLab auth configuration
+  community.okd.k8s:
+    state: present
+    namespace: "{{ rhdh_namespace }}"
+    src: "{{ path_playbooks }}/custom-app-config-gitlab/rhdh-app-configmap-1.yaml"
+
+- name: Apply updated RH Developer Hub instance configuration
+  community.okd.k8s:
+    state: present
+    namespace: "{{ rhdh_namespace }}"
+    src: "{{ path_playbooks }}/custom-app-config-gitlab/rhdh-instance-1.yaml"
+
+- name: Create RH Developer Hub app config map with GitLab integration
+  copy:
+    dest: "{{ path_playbooks }}/custom-app-config-gitlab/rhdh-app-configmap-2.yaml"
+    content: |
+      kind: ConfigMap
+      apiVersion: v1
+      metadata:
+        name: app-config-rhdh
+        namespace: {{ rhdh_namespace }}
+      data:
+        app-config-rhdh.yaml: |
+          app:
+            title: Red Hat Developer Hub
+          integrations:
+            gitlab:
+              - host: gitlab.{{ basedomain }}
+                token: {{ gitlab_token }}
+                apiBaseUrl: https://gitlab.{{ basedomain }}/api/v4
+                baseUrl: https://gitlab.{{ basedomain }}
+
+- name: Apply final app config map for GitLab integration
+  community.okd.k8s:
+    state: present
+    namespace: "{{ rhdh_namespace }}"
+    src: "{{ path_playbooks }}/custom-app-config-gitlab/rhdh-app-configmap-1.yaml"
+
+- name: Print Developer Hub URL
+  debug:
+    msg: "Developer Hub portal: https://backstage-developer-hub-rhdh-gitlab.{{ basedomain }}"
+- name: Print GitLab URL
+  debug:
+    msg: "GitLab portal: https://gitlab.{{ basedomain }}"

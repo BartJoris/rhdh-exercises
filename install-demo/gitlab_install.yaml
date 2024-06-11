@@ -30,6 +30,9 @@
   community.okd.k8s:
     state: present
     src: "{{ gitlab_output_file }}"
+- name: Pause before Gitlab object can be read
+  ansible.builtin.pause:
+      minutes: 2
 - name: Wait for GitLab resource to be running
   k8s_info:
     api_version: apps.gitlab.com/v1beta1
