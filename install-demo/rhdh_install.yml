@@ -3,9 +3,15 @@
   community.okd.k8s:
     state: present
     src: "{{ path_playbooks }}/lab-prep/rhdh-operator.yaml"
-- name: wait until operator is created
-  ansible.builtin.pause:
-    seconds: 2
+- name: Wait till the Object is created
+  kubernetes.core.k8s_info:
+    kind: Subscription
+    api_version: operators.coreos.com/v1alpha1
+    wait: yes
+    name: rhdh
+    namespace: rhdh-operator
+    wait_sleep: 10
+    wait_timeout: 360
 - name: Install developer hub instance
   community.okd.k8s:
     state: present

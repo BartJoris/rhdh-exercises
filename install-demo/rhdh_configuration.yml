@@ -65,37 +65,87 @@
     namespace: "{{ rhdh_namespace }}"
     src: "{{ path_playbooks }}/custom-app-config-gitlab/gitlab-secrets.yaml"
 
+- name: Include vars.yaml if tag is rhdh_configuration
+  ansible.builtin.include_vars:
+    file: vars.yaml
+  tags: rhdh_configuration
+
 - name: Apply GitLab auth configuration
   community.okd.k8s:
     state: present
     namespace: "{{ rhdh_namespace }}"
     src: "{{ path_playbooks }}/custom-app-config-gitlab/rhdh-app-configmap-1.yaml"
+  tags: rhdh_configuration
 
 - name: Apply updated RH Developer Hub instance configuration
   community.okd.k8s:
     state: present
     namespace: "{{ rhdh_namespace }}"
     src: "{{ path_playbooks }}/custom-app-config-gitlab/rhdh-instance-1.yaml"
+  tags: rhdh_configuration
 
-- name: Create RH Developer Hub app config map with GitLab integration
-  copy:
-    dest: "{{ path_playbooks }}/custom-app-config-gitlab/rhdh-app-configmap-2.yaml"
-    content: |
-      kind: ConfigMap
-      apiVersion: v1
-      metadata:
-        name: app-config-rhdh
-        namespace: {{ rhdh_namespace }}
-      data:
-        app-config-rhdh.yaml: |
-          app:
-            title: Red Hat Developer Hub
-          integrations:
-            gitlab:
-              - host: gitlab.{{ basedomain }}
-                token: {{ gitlab_token }}
-                apiBaseUrl: https://gitlab.{{ basedomain }}/api/v4
-                baseUrl: https://gitlab.{{ basedomain }}
+# Enable gitlab plugin integration
+- name: Apply GitLab auth configuration with Gitlab plugin integration
+  community.okd.k8s:
+    state: present
+    namespace: "{{ rhdh_namespace }}"
+    src: "{{ path_playbooks }}/custom-app-config-gitlab/rhdh-app-configmap-2.yaml"
+  when: enable_gitlab_plugin
+  tags: rhdh_configuration
+
+- name: Apply updated RH Developer Hub instance configuration
+  community.okd.k8s:
+    state: present
+    namespace: "{{ rhdh_namespace }}"
+    src: "{{ path_playbooks }}/custom-app-config-gitlab/rhdh-instance-1.yaml"
+  when: enable_gitlab_plugin
+  tags: rhdh_configuration
+
+# Add gitlab autodiscovery
+- name: Create configmap with dymamic plugin
+  community.okd.k8s:
+    state: present
+    namespace: "{{ rhdh_namespace }}"
+    src: "{{ path_playbooks }}/custom-app-config-gitlab/dynamic-plugins-3.yaml"
+  when: enable_gitlab_autodiscovery
+  tags: rhdh_configuration
+
+- name: Apply GitLab auto discovery on Developer Hub
+  community.okd.k8s:
+    state: present
+    namespace: "{{ rhdh_namespace }}"
+    src: "{{ path_playbooks }}/custom-app-config-gitlab/rhdh-app-configmap-3.yaml"
+  when: enable_gitlab_autodiscovery
+  tags: rhdh_configuration
+
+- name: Apply updated RH Developer Hub instance configuration
+  community.okd.k8s:
+    state: present
+    namespace: "{{ rhdh_namespace }}"
+    src: "{{ path_playbooks }}/custom-app-config-gitlab/rhdh-instance-3.yaml"
+  when: enable_gitlab_autodiscovery
+  tags: rhdh_configuration
+
+
+# - name: Create RH Developer Hub app config map with GitLab integration
+#   copy:
+#     dest: "{{ path_playbooks }}/custom-app-config-gitlab/rhdh-app-configmap-2.yaml"
+#     content: |
+#       kind: ConfigMap
+#       apiVersion: v1
+#       metadata:
+#         name: app-config-rhdh
+#         namespace: {{ rhdh_namespace }}
+#       data:
+#         app-config-rhdh.yaml: |
+#           app:
+#             title: Red Hat Developer Hub
+#           integrations:
+#             gitlab:
+#               - host: gitlab.{{ basedomain }}
+#                 token: {{ gitlab_token }}
+#                 apiBaseUrl: https://gitlab.{{ basedomain }}/api/v4
+#                 baseUrl: https://gitlab.{{ basedomain }}
 
 - name: Apply final app config map for GitLab integration
   community.okd.k8s:

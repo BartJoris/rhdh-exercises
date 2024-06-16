@@ -10,23 +10,20 @@
         - pyyaml
         - kubernetes
         - python-gitlab==1.15.0
-  - name: Install cert-manager operator
-    community.okd.k8s:
-      state: present
-      src: "{{ path_playbooks }}/lab-prep/cert-manager-operator.yaml"
-  - name: wait until cert-manager is created
-    ansible.builtin.pause:
-      seconds: 2
+  - name: Install certmanager
+    ansible.builtin.include_tasks:
+      file: certmanager_install.yml
   - name: Install Gitlab
     ansible.builtin.include_tasks:
-      file: gitlab_install.yaml
+      file: gitlab_install.yml
   - name: Setup GitLab with some initial configuration
     ansible.builtin.include_tasks:
-      file: gitlab_configuration.yaml
-    tags: gitlab_conf
+      file: gitlab_configuration.yml
+    tags: gitlab_configuration
   - name: Install Red Hat Developer Hub
     ansible.builtin.include_tasks:
-      file: rhdh_install.yaml
+      file: rhdh_install.yml
   - name: Configure Red Hat Developer Hub
     ansible.builtin.include_tasks:
-      file: rhdh_configuration.yaml
+      file: rhdh_configuration.yml
+    tags: rhdh_configuration

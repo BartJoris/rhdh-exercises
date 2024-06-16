@@ -14,6 +14,10 @@
   rescue:
     - fail:
         msg: "Required CLI tools (jq and oc) are not installed."
+- name: Include vars.yaml if tag is gitlab_configuration
+  ansible.builtin.include_vars:
+    file: vars.yaml
+  tags: gitlab_configuration
 - name: Get GitLab Ingress
   k8s_info:
     api_version: networking.k8s.io/v1
@@ -22,9 +26,11 @@
     label_selectors:
       - app=webservice
   register: ingress_info
+  tags: gitlab_configuration
 - name: Set GitLab API URL fact
   set_fact:
     api_url: "https://{{ ingress_info.resources[0].spec.rules[0].host }}/"
+  tags: gitlab_configuration
 - name: Get GitLab initial root password secret
   k8s:
     state: present
@@ -35,13 +41,16 @@
         name: gitlab-gitlab-initial-root-password
         namespace: gitlab-system
   register: gitlab_secret
+  tags: gitlab_configuration
 - name: Decode GitLab initial root password
   set_fact:
     api_password: "{{ gitlab_secret.result.data.password | b64decode }}"
     api_username: root
+  tags: gitlab_configuration
 - name: Print GitLab initial root password
   debug:
     msg: "GitLab initial root password is: {{ api_password }}"
+  tags: gitlab_configuration
 - name: Create GitLab groups
   community.general.gitlab_group:
     name: "{{ item }}"
@@ -50,9 +59,8 @@
     api_url: "{{ api_url }}"
     api_username: "{{ api_username }}"
     api_password: "{{ api_password }}"
-  loop:
-    - team-a
-    - team-b
+  loop: "{{ gitlab_users | map(attribute='group') | unique }}"
+  tags: gitlab_configuration
 - name: Create GitLab users
   community.general.gitlab_user:
     name: "{{ item.name }}"
@@ -67,25 +75,19 @@
     api_url: "{{ api_url }}"
     api_username: "{{ api_username }}"
     api_password: "{{ api_password }}"
-  loop:
-    - { name: user1, username: user1, password: "@abc1cde2", email: "user1@redhat.com", group: "team-a" }
-    - { name: user2, username: user2, password: "@abc1cde2", email: "user2@redhat.com", group: "team-b" }
-    - { name: bart, username: bart, password: "@abc1cde2", email: "user3@redhat.com", group: "team-a", isadmin: true }
-    - { name: maarten, username: maarten, password: "@abc1cde2", email: "user4@redhat.com", group: "team-a", isadmin: true }
+  loop: "{{ gitlab_users }}"
+  tags: gitlab_configuration
 - name: Add a user to a GitLab Group
   community.general.gitlab_group_members:
     api_url: "{{ api_url }}"
     api_username: "{{ api_username }}"
     api_password: "{{ api_password }}"
     gitlab_group: "{{ item.group }}"
-    gitlab_user: "{{ item.user }}"
+    gitlab_user: "{{ item.username }}"
     access_level: "{{ item.access }}"
     state: present
-  loop:
-    - { user: user1, group: team-a, access: "developer" }
-    - { user: user2, group: team-b, access: "developer" }
-    - { user: bart, group: team-a, access: "developer" }
-    - { user: maarten, group: team-a, access: "developer" }
+  loop: "{{ gitlab_users }}"
+  tags: gitlab_configuration
 - name: Create GitLab repository
   community.general.gitlab_project:
     api_url: "{{ api_url }}"
@@ -97,6 +99,7 @@
     state: present
     default_branch: main
     initialize_with_readme: true
+  tags: gitlab_configuration
 
 # - name: Clone repository over HTTPS
 #   ansible.builtin.git:

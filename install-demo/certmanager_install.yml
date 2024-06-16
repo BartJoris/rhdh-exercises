@@ -1,0 +1,14 @@
+---
+- name: Install cert-manager operator
+  community.okd.k8s:
+    state: present
+    src: "{{ path_playbooks }}/lab-prep/cert-manager-operator.yaml"
+- name: Wait till the Object is created
+  kubernetes.core.k8s_info:
+    kind: Subscription
+    api_version: operators.coreos.com/v1alpha1
+    wait: yes
+    name: cert-manager-operator
+    namespace: cert-manager-operator
+    wait_sleep: 10
+    wait_timeout: 360
